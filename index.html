@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>貸し借り入力テンキー</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background-color: #f3f4f6; display: flex; flex-direction: column; height: 100vh; padding: 10px; justify-content: space-between; }
+    #status-message { font-size: 12px; color: #6b7280; text-align: center; margin-bottom: 5px; min-height: 18px; }
+    .toggle-container { display: flex; background-color: #e5e7eb; padding: 4px; border-radius: 8px; margin-bottom: 10px; }
+    .toggle-btn { flex: 1; text-align: center; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; background: none; color: #4b5563; transition: all 0.2s; }
+    .toggle-btn.active { background-color: #ffffff; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .display-container { background-color: #ffffff; padding: 15px; border-radius: 8px; text-align: right; font-size: 32px; font-weight: bold; color: #111827; margin-bottom: 10px; border: 1px solid #e5e7eb; overflow: hidden; text-overflow: ellipsis; }
+    .display-container span { font-size: 18px; color: #6b7280; margin-left: 5px; }
+    .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; flex-grow: 1; margin-bottom: 10px; }
+    .key { background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 24px; font-weight: bold; color: #111827; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .key:active { background-color: #f3f4f6; }
+    .key.btn-clear { color: #dc2626; background-color: #fef2f2; }
+    .submit-btn { background-color: #2563eb; color: #ffffff; border: none; border-radius: 8px; padding: 16px; font-size: 18px; font-weight: bold; text-align: center; cursor: pointer; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); -webkit-tap-highlight-color: transparent; }
+    .submit-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <div id="status-message">LIFF初期化中...</div>
+
+  <div class="toggle-container">
+    <button type="button" id="btn-nuta" class="toggle-btn active" onclick="setBorrower('ぬた')">ぬたが借りた</button>
+    <button type="button" id="btn-tsuna" class="toggle-btn" onclick="setBorrower('ツナ')">ツナが借りた</button>
+  </div>
+
+  <div class="display-container">
+    <span id="amount-text">0</span><span>円</span>
+  </div>
+
+  <div class="keypad">
+    <div class="key" onclick="pressNum('1')">1</div>
+    <div class="key" onclick="pressNum('2')">2</div>
+    <div class="key" onclick="pressNum('3')">3</div>
+    <div class="key btn-clear" onclick="pressClear()">C</div>
+    
+    <div class="key" onclick="pressNum('4')">4</div>
+    <div class="key" onclick="pressNum('5')">5</div>
+    <div class="key" onclick="pressNum('6')">6</div>
+    <div class="key" onclick="pressNum('00')">00</div>
+    
+    <div class="key" onclick="pressNum('7')">7</div>
+    <div class="key" onclick="pressNum('8')">8</div>
+    <div class="key" onclick="pressNum('9')">9</div>
+    <div class="key" onclick="pressNum('0')">0</div>
+  </div>
+
+  <button type="button" id="btn-submit" class="submit-btn" onclick="sendData()" disabled>この内容でキャラクターに記録してもらう</button>
+
+  <script>
+    const LIFF_ID = '2010622192-XYnV4JrL'; 
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyyLkWt61ThQ8dS-VTUPX9MydYK2kzutic0o82lAuaWJksVXsGB4MLJtMC-fhLXN-ffkA/exec';
+
+    let currentAmount = '0';
+    let currentBorrower = 'ぬた';
+    let myUserId = '';
+
+    window.onload = function() {
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
+          if (!liff.isLoggedIn()) {
+            liff.login();
+          } else {
+            liff.getProfile()
+              .then(profile => {
+                myUserId = profile.userId;
+                document.getElementById('status-message').innerText = '接続完了（認証済み）';
+              })
+              .catch(err => {
+                document.getElementById('status-message').innerText = 'プロファイル取得失敗: ' + err.message;
+              });
+          }
+        })
+        .catch(err => {
+          document.getElementById('status-message').innerText = 'LIFF初期化失敗: ' + err.code + ' ' + err.message;
+        });
+    };
+
+    function setBorrower(name) {
+      currentBorrower = name;
+      if (name === 'ぬた') {
+        document.getElementById('btn-nuta').classList.add('add');
+        document.getElementById('btn-nuta').classList.add('active');
+        document.getElementById('btn-tsuna').classList.remove('active');
+      } else {
+        document.getElementById('btn-tsuna').classList.add('active');
+        document.getElementById('btn-nuta').classList.remove('active');
+      }
+    }
+
+    function pressNum(num) {
+      if (currentAmount === '0') {
+        if (num === '0' || num === '00') return;
+        currentAmount = num;
+      } else {
+        if ((currentAmount + num).length > 8) return;
+        currentAmount += num;
+      }
+      updateDisplay();
+    }
+
+    function pressClear() {
+      currentAmount = '0';
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      const num = parseInt(currentAmount, 10);
+      document.getElementById('amount-text').innerText = num.toLocaleString();
+      document.getElementById('btn-submit').disabled = (num === 0);
+    }
+
+    function sendData() {
+      const num = parseInt(currentAmount, 10);
+      document.getElementById('btn-submit').disabled = true;
+      document.getElementById('status-message').innerText = 'データを記録中...';
+
+      const payload = {
+        userId: myUserId,
+        borrower: currentBorrower,
+        amount: num
+      };
+
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('status-message').innerText = '記録完了！画面を閉じます...';
+        setTimeout(() => {
+          liff.closeWindow();
+        }, 1000);
+      })
+      .catch(error => {
+        document.getElementById('status-message').innerText = '通信エラーが発生しました。再試行してください。';
+        document.getElementById('btn-submit').disabled = false;
+        console.error('Error:', error);
+      });
+    }
+  </script>
+</body>
+</html>
