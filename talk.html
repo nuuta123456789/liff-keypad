@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>おしゃべり</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <p style="text-align: center; margin-top: 20px; color: #6b7280; font-family: sans-serif; font-size: 14px;">おしゃべり中...</p>
+
+  <script>
+    // 発行されたおしゃべり専用のLIFF IDを組み込み済みです
+    const LIFF_ID = '2010622192-Fh6lzqa6'; 
+
+    // ご提示いただいたメッセージ一覧をすべて格納しました
+    const userMessages = [
+      'ねえ',
+      'どれ？',
+      'これは？',
+      '太れる',
+      'OK？',
+      'うんてして',
+      'ねって',
+      '寝よかな',
+      'かわいいの欲しい',
+      '散歩いきたい',
+      'もっちしたい',
+      'むにりしたい',
+      'ちこた！',
+      'みぎ、ひだり',
+      'おちょちょだよ',
+      'こんなにうんてされてるのに',
+      'おなかへた',
+      'ぐずれる',
+      'おっきい声だせる'
+    ];
+
+    window.onload = function() {
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
+          if (!liff.isLoggedIn()) {
+            liff.login();
+          } else {
+            // セリフ一覧からランダムに1つ選択
+            const randomIndex = Math.floor(Math.random() * userMessages.length);
+            const selectedMessage = userMessages[randomIndex];
+
+            // ユーザーの代わりにトーク画面にメッセージを自動送信
+            liff.sendMessages([
+              {
+                type: 'text',
+                text: selectedMessage
+              }
+            ])
+            .then(() => {
+              // 送信が成功したら一瞬で画面を閉じる
+              liff.closeWindow();
+            })
+            .catch((err) => {
+              console.error('メッセージ送信失敗:', err);
+              liff.closeWindow();
+            });
+          }
+        })
+        .catch(err => {
+          console.error('LIFF初期化失敗:', err);
+        });
+    };
+  </script>
+</body>
+</html>
