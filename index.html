@@ -46,7 +46,6 @@
     <span id="amount-text">0</span><span>円</span>
   </div>
 
- <!-- --- ここから上書きしてください --- -->
   <!-- ③12キーのテンキー -->
   <div class="keypad">
     <div class="key" onclick="pressNum('1')">1</div>
@@ -55,7 +54,7 @@
     <div class="key btn-clear" onclick="pressClear()">C</div>
     
     <div class="key" onclick="pressNum('4')">4</div>
-    <div class="key" onclick="pressNum('5')">5</div>
+    <div class="key" onclick="pressNum('5')">6</div>
     <div class="key" onclick="pressNum('6')">6</div>
     <div class="key" onclick="pressNum('00')">00</div>
     
@@ -69,7 +68,6 @@
   <button type="button" id="btn-submit" class="submit-btn" onclick="sendData()" disabled>金額を入力する</button>
 
   <script>
-  // --- ここまで上書きしてください ---
     // ==========================================
     // 【最重要】ご自身の環境の設定値に書き換えてください
     // ==========================================
@@ -77,10 +75,9 @@
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbyyLkWt61ThQ8dS-VTUPX9MydYK2kzutic0o82lAuaWJksVXsGB4MLJtMC-fhLXN-ffkA/exec';
 
     // 夫婦のLINE UserID（ホワイトリスト）
-    // ※実際のUserIDが判明したら、将来的にここの文字列を書き換えます
     const USERS = {
-      'LINE_USER_ID_OF_NUTA': 'ぬた',
-      'LINE_USER_ID_OF_TSUNA': 'ツナ'
+      'U84be3c4637cb615088acedee42276cc6': 'ぬた',
+      'Uc64430865484c7a3f427393ee79c769c': 'ツナ'
     };
 
     let currentAmount = '0';
@@ -94,7 +91,6 @@
           if (!liff.isLoggedIn()) {
             liff.login();
           } else {
-            // --- ここから上書きしてください ---
             // ログイン済みの場合はユーザープロファイル（UserID）を取得
             liff.getProfile()
               .then(profile => {
@@ -110,7 +106,6 @@
                 updateDisplay();
               })
               .catch(err => {
-  // --- ここまで上書きしてください ---
                 document.getElementById('status-message').innerText = 'プロファイル取得失敗: ' + err.message;
               });
           }
@@ -151,7 +146,6 @@
       updateDisplay();
     }
 
-    // --- ここから上書きしてください ---
     // 画面の金額表示を更新
     function updateDisplay() {
       const num = parseInt(currentAmount, 10);
@@ -165,11 +159,11 @@
       }
     }
 
-    // GASへのデータ非同期送信（CORS対策：text/plainで送る）
+    // GASへのデータ非同期送信【0秒クローズ＆背面通信バックグラウンド処理版】
     function sendData() {
       const num = parseInt(currentAmount, 10);
       document.getElementById('btn-submit').disabled = true;
-      document.getElementById('status-message').innerText = 'データを記録中...';
+      document.getElementById('status-message').innerText = '送信中...';
 
       const payload = {
         userId: myUserId,
@@ -177,24 +171,17 @@
         amount: num
       };
 
+      // 【安全設計】keepalive: trueを指定し、画面が閉じた後もブラウザに送信処理を最後まで見届けさせる
       fetch(GAS_URL, {
         method: 'POST',
-        contentType: 'text/plain', // プリフライト（OPTIONS）を発生させないためのCORS対策
-        body: JSON.stringify(payload)
-      })
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById('status-message').innerText = '記録完了！画面を閉じます...';
-        // 変更箇所：1秒待たずに、成功した瞬間に即座にLIFF画面を閉じる
-        liff.closeWindow();
-      })
-      .catch(error => {
-        document.getElementById('status-message').innerText = '通信エラーが発生しました。再試行してください。';
-        document.getElementById('btn-submit').disabled = false;
-        console.error('Error:', error);
+        contentType: 'text/plain', 
+        body: JSON.stringify(payload),
+        keepalive: true
       });
+
+      // 【爆速化】GASからのレスポンス待機を完全に撤廃し、押した瞬間に0秒で画面をクローズする
+      liff.closeWindow();
     }
-  // --- ここまで上書きしてください ---
   </script>
 </body>
 </html>
