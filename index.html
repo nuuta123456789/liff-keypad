@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>貸し借り入力テンキー</title>
-  <!-- LINE LIFF SDK の読み込み（非同期ロードで描画を最優先に） -->
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
+  <!-- LINE LIFF SDK の読み込み -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
     body { background-color: #f3f4f6; display: flex; flex-direction: column; height: 100vh; padding: 10px; justify-content: space-between; }
@@ -16,13 +16,18 @@
     .toggle-btn { flex: 1; text-align: center; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; background: none; color: #4b5563; transition: all 0.2s; }
     .toggle-btn.active { background-color: #ffffff; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-    /* 金額表示エリア（文字サイズを限界まで拡大・改行防止を追加） */
-    .display-container { background-color: #ffffff; padding: 15px; border-radius: 8px; text-align: right; font-size: 48px; font-weight: bold; color: #111827; margin-bottom: 10px; border: 1px solid #e5e7eb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .display-container span { font-size: 28px; color: #6b7280; margin-left: 5px; font-weight: normal; }
+    /* 金額表示エリア */
+    .display-container { background-color: #ffffff; padding: 15px; border-radius: 8px; text-align: right; margin-bottom: 10px; border: 1px solid #e5e7eb; overflow: hidden; text-overflow: ellipsis; }
+    
+    /* 【改善】金額の数字部分：大きく、濃いハッキリした色に指定 */
+    #amount-text { font-size: 36px; font-weight: bold; color: #111827; }
+    
+    /* 【改善】「円」の単位部分：数字より一回り小さく、薄いグレーにしてバランスを取る */
+    .display-container .currency-unit { font-size: 20px; font-weight: bold; color: #6b7280; margin-left: 5px; }
 
-    /* テンキーのグリッド配置（数字サイズを拡大） */
+    /* テンキーのグリッド配置 */
     .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; flex-grow: 1; margin-bottom: 10px; }
-    .key { background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 40px; font-weight: bold; color: #111827; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .key { background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 24px; font-weight: bold; color: #111827; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .key:active { background-color: #f3f4f6; }
     .key.btn-clear { color: #dc2626; background-color: #fef2f2; }
 
@@ -33,7 +38,7 @@
 </head>
 <body>
 
-  <!-- 状態表示用 -->
+  <!-- 状態表示用（UserIDが取れたかなどのログ） -->
   <div id="status-message">LIFF初期化中...</div>
 
   <!-- ①借りた人のトグルスイッチ -->
@@ -42,9 +47,9 @@
     <button type="button" id="btn-tsuna" class="toggle-btn" onclick="setBorrower('ツナ')">ツナが借りた</button>
   </div>
 
-  <!-- ②金額表示エリア -->
+  <!-- ②金額表示エリア（「円」の部分に明示的にクラスを付与） -->
   <div class="display-container">
-    <span id="amount-text">0</span><span>円</span>
+    <span id="amount-text">0</span><span class="currency-unit">円</span>
   </div>
 
   <!-- ③12キーのテンキー -->
@@ -72,6 +77,7 @@
     const LIFF_ID = '2010622192-XYnV4JrL'; 
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbyyLkWt61ThQ8dS-VTUPX9MydYK2kzutic0o82lAuaWJksVXsGB4MLJtMC-fhLXN-ffkA/exec';
 
+    // 夫婦のLINE UserID（ホワイトリスト）
     const USERS = {
       'U84be3c4637cb615088acedee42276cc6': 'ぬた',
       'Uc64430865484c7a3f427393ee79c769c': 'ツナ'
@@ -81,21 +87,25 @@
     let currentBorrower = 'ぬた';
     let myUserId = '';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // LIFFの初期化処理
+    window.onload = function() {
       liff.init({ liffId: LIFF_ID })
         .then(() => {
           if (!liff.isLoggedIn()) {
             liff.login();
           } else {
+            // ログイン済みの場合はユーザープロファイル（UserID）を取得
             liff.getProfile()
               .then(profile => {
                 myUserId = profile.userId;
                 document.getElementById('status-message').innerText = '接続完了（認証済み）';
                 
+                // 【自動判別】開いた人がホワイトリストに登録されていれば、初期トグルをその人に合わせる
                 if (USERS[myUserId]) {
                   setBorrower(USERS[myUserId]);
                 }
                 
+                // 安全装置連動：ID取得が完了したのでボタンの判定を更新する
                 updateDisplay();
               })
               .catch(err => {
@@ -106,8 +116,9 @@
         .catch(err => {
           document.getElementById('status-message').innerText = 'LIFF初期化失敗: ' + err.code + ' ' + err.message;
         });
-    });
+    };
 
+    // トグルスイッチの切り替え
     function setBorrower(name) {
       currentBorrower = name;
       if (name === 'ぬた') {
@@ -119,26 +130,31 @@
       }
     }
 
+    // テンキーの数字押下
     function pressNum(num) {
       if (currentAmount === '0') {
         if (num === '0' || num === '00') return;
         currentAmount = num;
       } else {
+        // 桁数上限（安全のため最大8桁、1,000万円未満に制限）
         if ((currentAmount + num).length > 8) return;
         currentAmount += num;
       }
       updateDisplay();
     }
 
+    // クリアボタン押下
     function pressClear() {
       currentAmount = '0';
       updateDisplay();
     }
 
+    // 画面の金額表示を更新
     function updateDisplay() {
       const num = parseInt(currentAmount, 10);
       document.getElementById('amount-text').innerText = num.toLocaleString();
       
+      // 【安全装置】金額が0より大きく、かつLINEのUserIDが取得できている場合のみボタンを活性化
       if (num > 0 && myUserId !== '') {
         document.getElementById('btn-submit').disabled = false;
       } else {
@@ -146,6 +162,7 @@
       }
     }
 
+    // GASへのデータ非同期送信【0秒クローズ＆背面通信バックグラウンド処理版】
     function sendData() {
       const num = parseInt(currentAmount, 10);
       document.getElementById('btn-submit').disabled = true;
@@ -157,13 +174,15 @@
         amount: num
       };
 
+      // 【安全設計】keepalive: trueを指定し、画面が閉じた後もブラウザに送信処理を最後まで見届けさせる
       fetch(GAS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' }, 
+        contentType: 'text/plain', 
         body: JSON.stringify(payload),
         keepalive: true
       });
 
+      // 【爆速化】GASからのレスポンス待機を完全に撤廃し、押した瞬間に0秒で画面をクローズする
       liff.closeWindow();
     }
   </script>
