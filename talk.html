@@ -4,16 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>おしゃべり</title>
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <!-- defer属性を付与し、ページの描画（表示）を邪魔しないように非同期でロードします -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
 </head>
 <body>
   <p style="text-align: center; margin-top: 20px; color: #6b7280; font-family: sans-serif; font-size: 14px;">おしゃべり中...</p>
 
   <script>
-    // 発行されたおしゃべり専用のLIFF IDを組み込み済みです
     const LIFF_ID = '2010622192-Fh6lzqa6'; 
 
-    // ご提示いただいたメッセージ一覧をすべて格納しました
     const userMessages = [
       'ねえ',
       'どれ？',
@@ -36,7 +35,8 @@
       'おっきい声だせる'
     ];
 
-    window.onload = function() {
+    // window.onloadを廃止し、HTMLの骨組み（DOM）が整った最速のタイミングで実行します
+    document.addEventListener('DOMContentLoaded', () => {
       liff.init({ liffId: LIFF_ID })
         .then(() => {
           if (!liff.isLoggedIn()) {
@@ -46,27 +46,26 @@
             const randomIndex = Math.floor(Math.random() * userMessages.length);
             const selectedMessage = userMessages[randomIndex];
 
-            // ユーザーの代わりにトーク画面にメッセージを自動送信
+            // ★超重要：送信処理の完了（.then）を「待たずに」、一瞬で画面を閉じます。
+            // `liff.sendMessages`はブラウザのHTTP通信ではなく、LINEアプリ本体（ネイティブ領域）の
+            // 送信キューに命令を投げる処理です。そのため、命令を下した「直後」に画面を閉じても、
+            // LINEアプリ側が裏で送信処理を保証してくれます。
             liff.sendMessages([
               {
                 type: 'text',
                 text: selectedMessage
               }
-            ])
-            .then(() => {
-              // 送信が成功したら一瞬で画面を閉じる
-              liff.closeWindow();
-            })
-            .catch((err) => {
-              console.error('メッセージ送信失敗:', err);
-              liff.closeWindow();
-            });
+            ]);
+            
+            // 送信命令を出した直後、0秒でクローズを実行
+            liff.closeWindow();
           }
         })
         .catch(err => {
           console.error('LIFF初期化失敗:', err);
+          liff.closeWindow(); // エラー時も即座に閉じてユーザーを待たせない
         });
-    };
+    });
   </script>
 </body>
 </html>
